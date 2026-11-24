@@ -1,0 +1,61 @@
+<!DOCTYPE html><html><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="models.js"></script>
+<title>VEINROT</title><style>
+html,body{margin:0;height:100%;background:#050507;overflow:hidden;touch-action:none;font-family:sans-serif;color:#e9a;user-select:none;-webkit-user-select:none}
+canvas{position:fixed;inset:0}
+.p{position:fixed;left:0;right:0;text-align:center;pointer-events:none}
+.p button,.p b,.p small,.p div,.p input{pointer-events:auto}
+#top{top:calc(8px + env(safe-area-inset-top))}#bot{bottom:calc(14px + env(safe-area-inset-bottom))}
+button{background:#2a0a0a;color:#fcc;border:1px solid #a22;padding:10px 14px;font-size:15px;border-radius:8px;margin:3px}
+button.on{background:#a22;color:#fff}
+h2{margin:4px 0;color:#e33;text-shadow:0 0 10px #a00;letter-spacing:5px}
+small{color:#c9a;text-shadow:0 0 4px #000}
+input[type=range]{width:70%}
+#mm{position:fixed;inset:0;background:#000e;display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center}
+</style></head><body>
+<div class=p id=top></div><div class=p id=bot></div><div id=mm></div>
+<script>
+const TW=window.Telegram&&Telegram.WebApp;if(TW){try{TW.ready();TW.expand()}catch(e){}}
+let S={c:0,u:[0],m:[0]};try{S=Object.assign(S,JSON.parse(localStorage.vr||'{}'))}catch(e){}
+const sv=()=>{try{localStorage.vr=JSON.stringify(S)}catch(e){}};
+const CH=[
+{n:'Макс',d:'Быстрый: скорость +18%',c:0x3a8fe8,h:'cap',p:0,mn:'Бегун: длинные ноги, догоняет на открытом месте'},
+{n:'Лина',d:'Охотница: 6 патронов',c:0xf0a030,h:'long',p:60,mn:'Охотник: много глаз, видит в темноте'},
+{n:'Док',d:'Крепкий: быстрее поднимает',c:0x3ab060,h:'coat',p:100,mn:'Раздутый: рваный халат, огромное брюхо'},
+{n:'Тим',d:'Яркий фонарь +50%',c:0xe8d84a,h:'lamp',p:140,mn:'Удильщик: светящаяся приманка на голове'},
+{n:'Рита',d:'Выстрел сбивает сильнее',c:0xb050e0,h:'bun',p:200,mn:'Волосатая: лицо закрыто прядями, огромная пасть'}];
+const sc=new THREE.Scene();sc.background=new THREE.Color(0x07080c);sc.fog=new THREE.Fog(0x07080c,7,22);
+const cam=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,60);
+const rd=new THREE.WebGLRenderer({antialias:false});rd.setPixelRatio(.8);rd.setSize(innerWidth,innerHeight);rd.domElement.style.filter='contrast(1.15) saturate(.8) sepia(.18)';document.body.prepend(rd.domElement);
+addEventListener('resize',()=>{rd.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()});
+sc.add(new THREE.AmbientLight(0x303045,1.1));
+const torch=new THREE.PointLight(0xff8833,1.4,14);torch.position.set(2.6,2.6,2.6);sc.add(torch);
+const red=new THREE.PointLight(0xff1111,.9,12);red.position.set(-3,1.6,-2);sc.add(red);
+const fl=new THREE.Mesh(new THREE.PlaneGeometry(60,60),PM(0x23221a));fl.rotation.x=-Math.PI/2;sc.add(fl);
+cy(.08,.1,1.2,0x4a2a10,2.6,.6,2.6,sc);sp(.18,0xffaa33,2.6,1.3,2.6,sc,1,1.3,1,0xffaa33);
+for(let i=0;i<30;i++){const a=Math.random()*6.28,r=5+Math.random()*9;cy(.2,.3,2.4,0x4a3320,Math.cos(a)*r,1.2,Math.sin(a)*r,sc);co(1.3,3,0x1d3a22,Math.cos(a)*r,3.3,Math.sin(a)*r,sc,7)}
+let cur,tab='h',idx=0,sel=0,gv=0,rot=.4,auto=0,drag=0,lx=0;
+const $=i=>document.getElementById(i);
+function show(){if(cur)sc.remove(cur);cur=tab=='h'?human(CH[idx]):mon(idx);cur.rotation.y=rot;sc.add(cur);if(tab=='m')monGrow(cur,gv);
+const k=tab=='h'?0:1;cam.position.set(0,1.5+k*.5,4.4+k*1.8);cam.lookAt(0,1.2+k*.4,0);ui()}
+function ui(){const c=CH[idx],un=S.u.includes(idx);
+$('top').innerHTML='<h2>VEINROT</h2><div><button class="'+(tab=='h'?'on':'')+'" onclick="tb(\'h\')">👥 ВЫЖИВШИЙ</button><button class="'+(tab=='m'?'on':'')+'" onclick="tb(\'m\')">☣ ЕГО МОНСТР</button></div><small>🩸 '+S.c+'</small>';
+const nav='<div><button onclick="nx(-1)">◀</button><b style="font-size:22px;color:#fff">'+c.n+(un?'':' 🔒')+'</b><button onclick="nx(1)">▶</button></div>';
+$('bot').innerHTML=tab=='h'?nav+'<small>'+c.d+'</small><br>'+(un?'<button class=on style="font-size:20px;padding:12px 30px" onclick="mm()">▶ ИГРАТЬ</button>':'<button class=on onclick="buy()">Купить за '+c.p+' 🩸</button>')+'<br><small>Крути персонажа пальцем</small>':
+nav+'<small>'+c.mn+'</small><br><input type=range min=0 max=100 value="'+(gv*100|0)+'" oninput="gv=this.value/100;auto=0;monGrow(cur,gv)"><br><small>Рост мутации. Сначала растёт одна рука, у убийцы это мгновенно.</small><br><button onclick="auto=!auto;gv=0;ui()">'+(auto?'⏸ Стоп':'▶ Показать превращение')+'</button>'}
+const tb=t=>{tab=t;auto=0;gv=0;show()},nx=d=>{idx=(idx+5+d)%5;if(S.u.includes(idx))sel=idx;show()};
+function buy(){const c=CH[idx];if(S.c<c.p){alert('Не хватает 🩸 (у тебя '+S.c+')');return}S.c-=c.p;S.u.push(idx);sel=idx;sv();show()}
+function mm(){$('mm').style.display='flex';$('mm').innerHTML='<h2>РЕЖИМ ИГРЫ</h2><button disabled style="opacity:.5">🌐 Онлайн (скоро: нужен сервер)</button><button class=on style="font-size:20px" onclick="try{localStorage.vrsel=sel}catch(e){};location.href=\'game.html\'">🤖 Игра с ботами</button><button onclick="mc()">Назад</button>'}
+const mc=()=>$('mm').style.display='none';
+rd.domElement.addEventListener('pointerdown',e=>{drag=1;lx=e.clientX});addEventListener('pointerup',()=>drag=0);
+addEventListener('pointermove',e=>{if(drag){rot+=(e.clientX-lx)*.012;lx=e.clientX}});
+let t0=performance.now();
+function lp(n){requestAnimationFrame(lp);const dt=Math.min(.05,(n-t0)/1000),t=n/1000;t0=n;if(!drag)rot+=dt*.5;cur.rotation.y=rot;
+if(tab=='m'&&auto){gv=Math.min(1,gv+dt*.12);monGrow(cur,gv);if(gv>=1)auto=0}
+cur.arms.forEach(([a,p,z])=>{a.rotation.x=Math.sin(t*2+p)*.2;a.rotation.z=z+Math.sin(t*1.5+p)*.08});
+torch.intensity=1.2+Math.sin(t*20)*.15+Math.random()*.2;rd.render(sc,cam)}
+show();requestAnimationFrame(lp);
+</script></body></html>
